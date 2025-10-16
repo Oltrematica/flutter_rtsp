@@ -32,26 +32,51 @@ class VlcPlayer(
         Log.d(TAG, "🎬 Inizializzazione VlcPlayer")
         try {
             val options = ArrayList<String>().apply {
-                // Opzioni ottimizzate per stream RTSP a basso frame rate (5fps)
-                add("--rtsp-tcp")                    // TCP per stabilità
-                add("--network-caching=1000")        // Aumentato per basso bitrate (512Kbit/s)
-                add("--rtsp-frame-buffer-size=500000") // Buffer per frame H264
-                add("--no-drop-late-frames")         // Non scartare frame in ritardo
-                add("--no-skip-frames")              // Non saltare frame
-                add("--avcodec-hw=any")             // Hardware decoding per H264
-                add("--codec=avcodec,all")          // Priorità avcodec per H264
-                add("--clock-jitter=5000")          // Jitter per basso frame rate
-                add("--live-caching=1000")          // Cache per stream live
-                add("-vvv")                          // Verbose logging
+                // Opzioni ottimizzate per streaming RTSP IP camera con minimo buffering
+                add("--rtsp-tcp")                        // TCP obbligatorio per stabilità con telecamere
+                add("--network-caching=150")             // Cache minima (150ms) per latenza ultra-bassa
+                add("--live-caching=150")                // Cache live stream ultra-ridotta
+                add("--rtsp-frame-buffer-size=500000")   // Buffer frame RTSP aumentato per H264 1280x1024
+                
+                // Gestione frame persi e buffering - priorità fluidità
+                add("--drop-late-frames")                // Scarta frame in ritardo - ESSENZIALE
+                add("--skip-frames")                     // Salta frame se CPU sovraccarica
+                add("--avcodec-skip-frame=0")            // Non saltare frame nel decoder (0=none)
+                add("--avcodec-skip-idct=0")             // Non saltare IDCT (0=none)
+                add("--avcodec-skiploopfilter=4")        // Skip loop filter (4=all) per max performance
+                
+                // Decodifica veloce e hardware acceleration
+                add("--avcodec-fast")                    // Fast decoding - minor qualità, max velocità
+                add("--avcodec-hw=any")                  // HW acceleration se disponibile
+                add("--avcodec-threads=0")               // Auto thread count per decoder
+                add("--codec=avcodec,all")               // Priorità avcodec per H264
+                
+                // Clock e sincronizzazione - riduce latenza
+                add("--clock-jitter=0")                  // No jitter compensation
+                add("--clock-synchro=0")                 // Disabilita clock sync (0=no sync)
+                add("--no-audio")                        // No audio (telecamera solo video)
+                add("--no-sout-audio")                   // No stream output audio
+                
+                // Ottimizzazioni varie per performance
+                add("--file-caching=300")                // File caching ridotto
+                add("--no-video-title-show")             // No overlay titolo
+                add("--no-snapshot-preview")             // No preview snapshot
+                add("--no-stats")                        // No statistiche per performance
+                add("--avi-index=0")                     // No index building
+                add("--no-osd")                          // No on-screen display
+                add("--no-keyboard-events")              // No eventi tastiera
+                add("--no-mouse-events")                 // No eventi mouse
+                
+                // Logging per debug
+                add("-vv")                               // Verbose logging
             }
-            Log.d(TAG, "📋 Opzioni VLC per stream H264 5fps @ 512Kbit/s:")
+            Log.d(TAG, "📋 Opzioni VLC ottimizzate per efficienza:")
             options.forEach { Log.d(TAG, "   $it") }
             
             libVlc = LibVLC(activity, options)
             Log.d(TAG, "✅ LibVLC creato")
             
             mediaPlayer = MediaPlayer(libVlc)
-            Log.d(TAG, "✅ MediaPlayer creato")
             Log.d(TAG, "✅ MediaPlayer creato")
             
             // Setup event listener
@@ -113,42 +138,55 @@ class VlcPlayer(
             surface = Surface(surfaceTexture)
             Log.d(TAG, "✅ Surface creato")
 
-            // Setup VLC output
+            // Setup VLC output con aspect ratio automatico
             Log.d(TAG, "📺 Setup VLC output...")
             val vout: IVLCVout = mediaPlayer!!.vlcVout
             Log.d(TAG, "   Detach views precedenti...")
             vout.detachViews()
             Log.d(TAG, "   Set video surface...")
             vout.setVideoSurface(surface, null)
+            Log.d(TAG, "   Set window size...")
+            vout.setWindowSize(width, height)
             Log.d(TAG, "   Attach views...")
             vout.attachViews()
             Log.d(TAG, "✅ VLC output configurato")
+            
+            // Configura aspect ratio e scaling
+            mediaPlayer?.apply {
+                // Mantiene proporzioni originali del video
+                aspectRatio = null  // Automatico
+                scale = 0f  // Automatico, best fit
+                Log.d(TAG, "✅ Aspect ratio e scale impostati su automatico")
+            }
 
             // Create and configure media
             Log.d(TAG, "🎬 Creazione Media per URL: $url")
             val media = Media(libVlc, Uri.parse(url))
             
-            Log.d(TAG, "   Abilita HW decoder per H264...")
+            Log.d(TAG, "   Abilita HW decoder...")
             media.setHWDecoderEnabled(true, false)
             
-            Log.d(TAG, "   Aggiungi opzioni specifiche per stream:")
-            // Opzioni ottimizzate per questo specifico stream RTSP
-            media.addOption(":network-caching=1000")      // Cache aumentata per stabilità
-            media.addOption(":rtsp-tcp")                   // TCP obbligatorio
-            media.addOption(":rtsp-frame-buffer-size=500000") // Buffer frame
-            media.addOption(":clock-jitter=5000")          // Tolleranza jitter per 5fps
-            media.addOption(":clock-synchro=0")            // Disabilita sync per basso fps
-            media.addOption(":live-caching=1000")          // Cache live stream
+            Log.d(TAG, "   Aggiungi opzioni Media ottimizzate per telecamera RTSP:")
+            // Opzioni Media specifiche - override globali per massima efficienza
+            media.addOption(":network-caching=150")            // Ultra-low latency (150ms)
+            media.addOption(":live-caching=150")               // Live cache ultra-bassa
+            media.addOption(":rtsp-tcp")                       // TCP per stabilità
+            media.addOption(":rtsp-frame-buffer-size=500000")  // Buffer adeguato per 1280x1024 H264
+            media.addOption(":clock-jitter=0")                 // No jitter
+            media.addOption(":clock-synchro=0")                // No clock sync
+            media.addOption(":drop-late-frames")               // Scarta frame ritardo
+            media.addOption(":skip-frames")                    // Skip frames se necessario
+            media.addOption(":avcodec-skiploopfilter=4")       // Skip loop filter (all)
+            media.addOption(":avcodec-skip-frame=0")           // No frame skip decoder
+            media.addOption(":avcodec-skip-idct=0")            // No IDCT skip
+            media.addOption(":avcodec-fast")                   // Fast decoding
+            media.addOption(":avcodec-threads=0")              // Auto threads
+            media.addOption(":no-audio")                       // No audio
+            media.addOption(":file-caching=300")               // File cache ridotta
+            media.addOption(":vout=android_display")           // Output diretto Android
+            media.addOption(":aspect-ratio=")                  // Aspect ratio automatico
             
-            Log.d(TAG, "📊 Parametri stream attesi:")
-            Log.d(TAG, "   Resolution: ${width}x${height} (1280x1024)")
-            Log.d(TAG, "   Codec: H264")
-            Log.d(TAG, "   Bitrate: 512 Kbit/s (CONSTANT_BITRATE)")
-            Log.d(TAG, "   Frame rate: 5 fps (basso!)")
-            Log.d(TAG, "   GOP: 25")
-            Log.d(TAG, "   Quality: 70%")
-            
-            Log.d(TAG, "✅ Media configurato")
+            Log.d(TAG, "✅ Media configurato per efficienza massima")
 
             // Set media and play
             Log.d(TAG, "▶️ Avvio riproduzione...")
