@@ -31,46 +31,10 @@ class VlcPlayer(
     init {
         Log.d(TAG, "🎬 Inizializzazione VlcPlayer")
         try {
-            val options = ArrayList<String>().apply {
-                // Opzioni ottimizzate per streaming RTSP IP camera con minimo buffering
-                add("--rtsp-tcp")                        // TCP obbligatorio per stabilità con telecamere
-                add("--network-caching=150")             // Cache minima (150ms) per latenza ultra-bassa
-                add("--live-caching=150")                // Cache live stream ultra-ridotta
-                add("--rtsp-frame-buffer-size=500000")   // Buffer frame RTSP aumentato per H264 1280x1024
-                
-                // Gestione frame persi e buffering - priorità fluidità
-                add("--drop-late-frames")                // Scarta frame in ritardo - ESSENZIALE
-                add("--skip-frames")                     // Salta frame se CPU sovraccarica
-                add("--avcodec-skip-frame=0")            // Non saltare frame nel decoder (0=none)
-                add("--avcodec-skip-idct=0")             // Non saltare IDCT (0=none)
-                add("--avcodec-skiploopfilter=4")        // Skip loop filter (4=all) per max performance
-                
-                // Decodifica veloce e hardware acceleration
-                add("--avcodec-fast")                    // Fast decoding - minor qualità, max velocità
-                add("--avcodec-hw=any")                  // HW acceleration se disponibile
-                add("--avcodec-threads=0")               // Auto thread count per decoder
-                add("--codec=avcodec,all")               // Priorità avcodec per H264
-                
-                // Clock e sincronizzazione - riduce latenza
-                add("--clock-jitter=0")                  // No jitter compensation
-                add("--clock-synchro=0")                 // Disabilita clock sync (0=no sync)
-                add("--no-audio")                        // No audio (telecamera solo video)
-                add("--no-sout-audio")                   // No stream output audio
-                
-                // Ottimizzazioni varie per performance
-                add("--file-caching=300")                // File caching ridotto
-                add("--no-video-title-show")             // No overlay titolo
-                add("--no-snapshot-preview")             // No preview snapshot
-                add("--no-stats")                        // No statistiche per performance
-                add("--avi-index=0")                     // No index building
-                add("--no-osd")                          // No on-screen display
-                add("--no-keyboard-events")              // No eventi tastiera
-                add("--no-mouse-events")                 // No eventi mouse
-                
-                // Logging per debug
-                add("-vv")                               // Verbose logging
-            }
-            Log.d(TAG, "📋 Opzioni VLC ottimizzate per efficienza:")
+            // Minimal options - matching legacy working implementation (oculus-android-vlc)
+            val options = ArrayList<String>()
+            
+            Log.d(TAG, "📋 VLC Options for RTSP ANPR camera (minimal config):")
             options.forEach { Log.d(TAG, "   $it") }
             
             libVlc = LibVLC(activity, options)
@@ -138,7 +102,7 @@ class VlcPlayer(
             surface = Surface(surfaceTexture)
             Log.d(TAG, "✅ Surface creato")
 
-            // Setup VLC output con aspect ratio automatico
+            // Setup VLC output
             Log.d(TAG, "📺 Setup VLC output...")
             val vout: IVLCVout = mediaPlayer!!.vlcVout
             Log.d(TAG, "   Detach views precedenti...")
@@ -150,43 +114,19 @@ class VlcPlayer(
             Log.d(TAG, "   Attach views...")
             vout.attachViews()
             Log.d(TAG, "✅ VLC output configurato")
-            
-            // Configura aspect ratio e scaling
-            mediaPlayer?.apply {
-                // Mantiene proporzioni originali del video
-                aspectRatio = null  // Automatico
-                scale = 0f  // Automatico, best fit
-                Log.d(TAG, "✅ Aspect ratio e scale impostati su automatico")
-            }
 
             // Create and configure media
             Log.d(TAG, "🎬 Creazione Media per URL: $url")
             val media = Media(libVlc, Uri.parse(url))
             
-            Log.d(TAG, "   Abilita HW decoder...")
+            Log.d(TAG, "   Enable HW decoder...")
             media.setHWDecoderEnabled(true, false)
             
-            Log.d(TAG, "   Aggiungi opzioni Media ottimizzate per telecamera RTSP:")
-            // Opzioni Media specifiche - override globali per massima efficienza
-            media.addOption(":network-caching=150")            // Ultra-low latency (150ms)
-            media.addOption(":live-caching=150")               // Live cache ultra-bassa
-            media.addOption(":rtsp-tcp")                       // TCP per stabilità
-            media.addOption(":rtsp-frame-buffer-size=500000")  // Buffer adeguato per 1280x1024 H264
-            media.addOption(":clock-jitter=0")                 // No jitter
-            media.addOption(":clock-synchro=0")                // No clock sync
-            media.addOption(":drop-late-frames")               // Scarta frame ritardo
-            media.addOption(":skip-frames")                    // Skip frames se necessario
-            media.addOption(":avcodec-skiploopfilter=4")       // Skip loop filter (all)
-            media.addOption(":avcodec-skip-frame=0")           // No frame skip decoder
-            media.addOption(":avcodec-skip-idct=0")            // No IDCT skip
-            media.addOption(":avcodec-fast")                   // Fast decoding
-            media.addOption(":avcodec-threads=0")              // Auto threads
-            media.addOption(":no-audio")                       // No audio
-            media.addOption(":file-caching=300")               // File cache ridotta
-            media.addOption(":vout=android_display")           // Output diretto Android
-            media.addOption(":aspect-ratio=")                  // Aspect ratio automatico
+            // Use same options as legacy working implementation (oculus-android-vlc)
+            Log.d(TAG, "   Aggiungi opzioni Media (legacy config):")
+            media.addOption(":network-caching=400")
             
-            Log.d(TAG, "✅ Media configurato per efficienza massima")
+            Log.d(TAG, "✅ Media configurato")
 
             // Set media and play
             Log.d(TAG, "▶️ Avvio riproduzione...")
