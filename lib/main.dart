@@ -44,7 +44,7 @@ class _RtspPlayerPageState extends State<RtspPlayerPage> {
   int _textureId = -1;
 
   // Getter per costruire l'URL RTSP dall'IP editabile
-  String get _rtspUrl => 'rtsp://${_ipController.text}:$_rtspPort';
+  String get _rtspUrl => 'rtsp://192.168.1.12:8554/mystream';
 
   @override
   void initState() {
